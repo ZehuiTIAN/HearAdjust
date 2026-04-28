@@ -1,18 +1,16 @@
 // src/js/offscreen.js
 
-import { createHearAdjustNode } from './audioProcessor.js';
+import { createHearAdjustNode, applyGains, EMPATHY_PRESETS } from './audioProcessor.js';
 
-// Global variables to hold the audio context and stream
-let audioContext;
-let audioStream;
-let sourceNode;
-let processorNode;
+let audioContext = null;
+let audioStream = null;
+let sourceNode = null;
+let processorGraph = null;
+let tinnitusOscillator = null;
+let tinnitusGainNode = null;
 
-// Listen for messages from the background script
 chrome.runtime.onMessage.addListener((message) => {
-    if (message.target !== 'offscreen') {
-        return;
-    }
+    if (message.target !== 'offscreen') return;
 
     switch (message.type) {
         case 'START_OFFSCREEN_PROCESSING':
@@ -21,23 +19,21 @@ chrome.runtime.onMessage.addListener((message) => {
         case 'STOP_OFFSCREEN_PROCESSING':
             stopProcessing();
             break;
+        case 'APPLY_PRESET':
+            applyPreset(message.preset);
+            break;
+        case 'UPDATE_FILTER_SETTINGS':
+            updateSingleBand(message.bandIndex, message.gainValue);
+            break;
         default:
-            console.warn('Unknown message type received in offscreen document:', message.type);
+            console.warn('Unknown offscreen message:', message.type);
     }
 });
 
-/**
- * Starts the Web Audio API processing.
- * @param {string} streamId The ID of the media stream to capture.
- */
 async function startProcessing(streamId) {
-    if (audioContext) {
-        console.warn('Audio processing is already active.');
-        return;
-    }
+    if (audioContext) return;
 
     try {
-        // 1. Get the media stream from the tab
         audioStream = await navigator.mediaDevices.getUserMedia({
             audio: {
                 mandatory: {
@@ -47,23 +43,16 @@ async function startProcessing(streamId) {
             },
         });
 
-        // 2. Set up the Web Audio API context and nodes
         audioContext = new AudioContext({ latencyHint: 'interactive' });
         sourceNode = audioContext.createMediaStreamSource(audioStream);
+        processorGraph = createHearAdjustNode(audioContext);
 
-        // 3. Create the custom processing node
-        // For now, this is a placeholder. It will be expanded with actual logic.
-        processorNode = createHearAdjustNode(audioContext);
+        sourceNode.connect(processorGraph.input);
+        processorGraph.output.connect(audioContext.destination);
 
-        // 4. Connect the nodes: source -> processor -> destination (speakers)
-        sourceNode.connect(processorNode.input);
-        processorNode.output.connect(audioContext.destination);
-
-        console.log('Offscreen audio processing started.');
-
+        console.log('HearAdjust: audio processing started.');
     } catch (error) {
-        console.error('Error starting offscreen audio processing:', error);
-        // Clean up on error
+        console.error('Error starting audio processing:', error);
         if (audioContext) {
             audioContext.close();
             audioContext = null;
@@ -71,37 +60,75 @@ async function startProcessing(streamId) {
     }
 }
 
-/**
- * Stops the audio processing and cleans up resources.
- */
 function stopProcessing() {
-    if (!audioContext) {
-        console.warn('Audio processing is not active, nothing to stop.');
+    if (!audioContext) return;
+
+    stopTinnitus();
+
+    try {
+        audioStream.getTracks().forEach(track => track.stop());
+        sourceNode.disconnect();
+        processorGraph.output.disconnect();
+        audioContext.close();
+    } catch (error) {
+        console.error('Error during stop:', error);
+    } finally {
+        audioContext = null;
+        audioStream = null;
+        sourceNode = null;
+        processorGraph = null;
+        window.close();
+    }
+}
+
+function applyPreset(presetKey) {
+    if (!processorGraph?.filters) return;
+
+    stopTinnitus();
+
+    if (!presetKey || presetKey === 'flat') {
+        applyGains(processorGraph.filters, [0, 0, 0, 0, 0, 0, 0, 0]);
         return;
     }
 
-    try {
-        // 1. Stop all tracks in the stream to release the capture indicator
-        audioStream.getTracks().forEach(track => track.stop());
+    const preset = EMPATHY_PRESETS[presetKey];
+    if (!preset) return;
 
-        // 2. Disconnect audio nodes
-        sourceNode.disconnect();
-        processorNode.output.disconnect();
+    applyGains(processorGraph.filters, preset.gains);
 
-        // 3. Close the AudioContext
-        audioContext.close().then(() => {
-            console.log('AudioContext closed successfully.');
-        });
-
-    } catch (error) {
-        console.error('Error during stopProcessing:', error);
-    } finally {
-        // 4. Clear global variables and close the offscreen document
-        audioStream = null;
-        audioContext = null;
-        sourceNode = null;
-        processorNode = null;
-        console.log('Offscreen audio processing stopped and resources released.');
-        window.close(); // Important: This closes the offscreen document.
+    if (preset.tinnitus) {
+        startTinnitus(preset.tinnitusFreq || 6000, preset.tinnitusGain || 0.04);
     }
+}
+
+function updateSingleBand(bandIndex, gainValue) {
+    if (!processorGraph?.filters) return;
+    if (bandIndex < 0 || bandIndex >= processorGraph.filters.length) return;
+    processorGraph.filters[bandIndex].gain.value = gainValue;
+}
+
+function startTinnitus(frequency, linearGain) {
+    if (!audioContext) return;
+
+    tinnitusOscillator = audioContext.createOscillator();
+    tinnitusGainNode = audioContext.createGain();
+
+    tinnitusOscillator.type = 'sine';
+    tinnitusOscillator.frequency.value = frequency;
+    tinnitusGainNode.gain.value = linearGain;
+
+    tinnitusOscillator.connect(tinnitusGainNode);
+    tinnitusGainNode.connect(audioContext.destination);
+    tinnitusOscillator.start();
+}
+
+function stopTinnitus() {
+    if (!tinnitusOscillator) return;
+    try {
+        tinnitusOscillator.stop();
+        tinnitusOscillator.disconnect();
+        tinnitusGainNode.disconnect();
+    } catch (_) {}
+    tinnitusOscillator = null;
+    tinnitusGainNode = null;
 }

@@ -1,18 +1,29 @@
 {
   "manifest_version": 3,
   "name": "HearAdjust",
-  "version": "0.1.0",
-  "description": "Real-time audio frequency adjustment based on your hearing profile.",
+  "version": "0.2.0",
+  "description": "模拟听力障碍，感受他们所感知的声音世界。Real-time hearing loss simulation and audio enhancement.",
   "permissions": [
     "activeTab",
     "tabCapture",
     "offscreen",
-    "storage"
+    "storage",
+    "tabs"
   ],
   "background": {
     "service_worker": "src/js/background.js"
   },
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16":  "assets/icon16.png",
+      "48":  "assets/icon48.png",
+      "128": "assets/icon128.png"
+    }
+  },
+  "icons": {
+    "16":  "assets/icon16.png",
+    "48":  "assets/icon48.png",
+    "128": "assets/icon128.png"
   }
 }

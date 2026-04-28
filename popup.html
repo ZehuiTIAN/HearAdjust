@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,15 +7,77 @@
     <link rel="stylesheet" href="src/css/popup.css">
 </head>
 <body>
-    <div class="container">
-        <h1>HearAdjust</h1>
-        <p>Activate to adjust audio in the current tab.</p>
-        <button id="toggleButton" class="button-off">Activate</button>
-        <div class="status">
-            <span>Status:</span>
-            <span id="statusText">Inactive</span>
+    <div class="app">
+
+        <!-- 顶部标题栏 -->
+        <header class="app-header">
+            <div class="app-brand">
+                <svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+                    <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/>
+                    <path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
+                </svg>
+                <span class="app-name">HearAdjust</span>
+            </div>
+            <label class="power-toggle" title="开启 / 关闭音频处理">
+                <input type="checkbox" id="powerCheckbox">
+                <span class="toggle-track">
+                    <span class="toggle-thumb"></span>
+                </span>
+            </label>
+        </header>
+
+        <!-- 状态条 -->
+        <div class="status-bar" id="statusBar">
+            <span class="status-dot" id="statusDot"></span>
+            <span class="status-text" id="statusText">未激活 — 点击开关开始</span>
         </div>
+
+        <!-- 模式选择标签 -->
+        <div class="mode-tabs">
+            <button class="mode-tab active" data-mode="empathy" id="tab-empathy">
+                共情体验
+            </button>
+            <button class="mode-tab" data-mode="hearing_aid" id="tab-hearing-aid">
+                助听调节
+            </button>
+        </div>
+
+        <!-- ═══ 共情体验面板 ═══ -->
+        <div class="panel" id="panel-empathy">
+            <p class="panel-intro">选择一种听力状况，感受他们所感知的声音世界。</p>
+
+            <div class="preset-list" id="presetList">
+                <!-- 由 popup.js 动态生成 -->
+            </div>
+
+            <!-- 当前预设的详细描述 -->
+            <div class="preset-description hidden" id="presetDescription">
+                <p id="presetDescText"></p>
+            </div>
+        </div>
+
+        <!-- ═══ 助听调节面板 ═══ -->
+        <div class="panel hidden" id="panel-hearing-aid">
+            <p class="panel-intro">根据您的听力图调整各频段增益，提升语音清晰度。</p>
+
+            <!-- 快速预设按钮 -->
+            <div class="ha-quick-presets" id="haQuickPresets">
+                <!-- 由 popup.js 动态生成 -->
+            </div>
+
+            <!-- 均衡器滑块 -->
+            <div class="equalizer" id="equalizerControls">
+                <!-- 由 popup.js 动态生成 -->
+            </div>
+        </div>
+
+        <!-- 底部版权注脚 -->
+        <footer class="app-footer">
+            一个关于倾听与关怀的项目
+        </footer>
+
     </div>
-    <script src="src/js/popup.js"></script>
+    <script src="src/js/popup.js" type="module"></script>
 </body>
 </html>
