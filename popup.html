@@ -8,44 +8,67 @@
 </head>
 <body>
     <div class="app">
+        <div class="app-grid"></div>
 
-        <!-- 顶部标题栏 -->
         <header class="app-header">
-            <div class="app-brand">
-                <svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
-                    <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/>
-                    <path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
-                </svg>
-                <span class="app-name">HearAdjust</span>
+            <div class="app-brand-wrap">
+                <div class="app-brand">
+                    <svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter">
+                        <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+                        <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/>
+                        <path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
+                    </svg>
+                    <div>
+                        <div class="app-name">HearAdjust</div>
+                        <div class="app-subtitle" id="appSubtitle">Listen Through Another Threshold</div>
+                    </div>
+                </div>
+                <p class="app-intro" id="appIntro">左侧进入共情体验，中间关闭，右侧切到助听调节。</p>
             </div>
-            <label class="power-toggle" title="开启 / 关闭音频处理">
-                <input type="checkbox" id="powerCheckbox">
-                <span class="toggle-track">
-                    <span class="toggle-thumb"></span>
-                </span>
-            </label>
+
+            <div class="toolbar-row">
+                <div class="lang-switch" id="langSwitch" aria-label="Language Switch">
+                    <button class="lang-option active" type="button" data-lang="zh">中</button>
+                    <button class="lang-option" type="button" data-lang="en">EN</button>
+                </div>
+            </div>
+
+            <div class="mode-switch-shell">
+                <div class="mode-switch" id="modeSwitch" role="tablist" aria-label="模式开关">
+                    <button class="switch-option" type="button" data-switch-state="empathy">共情</button>
+                    <button class="switch-option" type="button" data-switch-state="off">关闭</button>
+                    <button class="switch-option" type="button" data-switch-state="hearing_aid">助听</button>
+                </div>
+                <div class="switch-legend">
+                    <span id="switchLegendLeft">左</span>
+                    <span id="switchLegendCenter">中</span>
+                    <span id="switchLegendRight">右</span>
+                </div>
+            </div>
         </header>
 
-        <!-- 状态条 -->
         <div class="status-bar" id="statusBar">
             <span class="status-dot" id="statusDot"></span>
-            <span class="status-text" id="statusText">未激活 — 点击开关开始</span>
+            <span class="status-text" id="statusText">未激活 — 将拨杆停在左右任一侧开始</span>
         </div>
 
-        <!-- 模式选择标签 -->
-        <div class="mode-tabs">
-            <button class="mode-tab active" data-mode="empathy" id="tab-empathy">
-                共情体验
-            </button>
-            <button class="mode-tab" data-mode="hearing_aid" id="tab-hearing-aid">
-                助听调节
-            </button>
+        <main class="panel-stack">
+        <div class="panel" id="panel-off">
+            <p class="panel-intro" id="offIntro">HearAdjust 在关闭状态下不会改变任何声音。你可以先了解两个模式，再把拨杆切到左或右开始体验。</p>
+
+            <div class="info-card info-card-empathy">
+                <div class="info-card-title" id="offEmpathyTitle">共情体验</div>
+                <p class="info-card-text" id="offEmpathyText">模拟不同类型的听力损失，让身边的人短暂听见你或他人实际听到的世界。</p>
+            </div>
+
+            <div class="info-card info-card-hearing">
+                <div class="info-card-title" id="offHearingTitle">助听调节</div>
+                <p class="info-card-text" id="offHearingText">按频段提升或削减声音，用于根据听力图做个性化补偿，帮助听清语音细节。</p>
+            </div>
         </div>
 
-        <!-- ═══ 共情体验面板 ═══ -->
         <div class="panel" id="panel-empathy">
-            <p class="panel-intro">选择一种听力状况，感受他们所感知的声音世界。</p>
+            <p class="panel-intro" id="empathyIntro">选择一种听力状况，感受他们所感知的声音世界。</p>
 
             <div class="preset-list" id="presetList">
                 <!-- 由 popup.js 动态生成 -->
@@ -55,11 +78,21 @@
             <div class="preset-description hidden" id="presetDescription">
                 <p id="presetDescText"></p>
             </div>
+
+            <div class="empathy-custom-editor hidden" id="empathyCustomEditor">
+                <div class="empathy-custom-header">
+                    <span class="empathy-custom-title" id="empathyCustomTitle">我的听力图</span>
+                    <span class="empathy-custom-caption" id="empathyCustomCaption">把你的听力损失填进来，让别人听到你听到的世界</span>
+                </div>
+                <div class="equalizer empathy-equalizer" id="empathyEqualizerControls">
+                    <!-- 由 popup.js 动态生成 -->
+                </div>
+            </div>
         </div>
 
         <!-- ═══ 助听调节面板 ═══ -->
         <div class="panel hidden" id="panel-hearing-aid">
-            <p class="panel-intro">根据您的听力图调整各频段增益，提升语音清晰度。</p>
+            <p class="panel-intro" id="hearingIntro">根据您的听力图调整各频段增益，提升语音清晰度。</p>
 
             <!-- 快速预设按钮 -->
             <div class="ha-quick-presets" id="haQuickPresets">
@@ -72,8 +105,9 @@
             </div>
         </div>
 
-        <!-- 底部版权注脚 -->
-        <footer class="app-footer">
+        </main>
+
+        <footer class="app-footer" id="appFooter">
             一个关于倾听与关怀的项目
         </footer>
 

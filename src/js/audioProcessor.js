@@ -86,7 +86,7 @@ export const HEARING_AID_PRESETS = {
 };
 
 /**
- * Creates the core EQ + compressor audio processing graph.
+ * Creates the core EQ audio processing graph.
  */
 export function createHearAdjustNode(audioContext) {
     const filters = FREQUENCY_BANDS.map(frequency => {
@@ -102,18 +102,9 @@ export function createHearAdjustNode(audioContext) {
         filters[i].connect(filters[i + 1]);
     }
 
-    const compressor = audioContext.createDynamicsCompressor();
-    compressor.threshold.value = -24;
-    compressor.knee.value = 6;
-    compressor.ratio.value = 12;
-    compressor.attack.value = 0.003;
-    compressor.release.value = 0.25;
-
-    filters[filters.length - 1].connect(compressor);
-
     return {
         input: filters[0],
-        output: compressor,
+        output: filters[filters.length - 1],
         filters,
     };
 }
