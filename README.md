@@ -50,9 +50,10 @@ Chrome 116 or later is required because the extension uses Manifest V3 and the o
 
 1. Open a tab that is playing audio or video.
 2. Click the HearAdjust extension icon.
-3. Move the three-state switch left for Empathy Mode or right for Hearing Aid Mode.
-4. Choose a preset or adjust the sliders.
-5. Move the switch back to the center position to turn processing off.
+3. The current version can only process one browser tab at a time.
+4. Move the three-state switch left for Empathy Mode or right for Hearing Aid Mode.
+5. Choose a preset or adjust the sliders.
+6. Move the switch back to the center position to turn processing off before switching to another tab.
 
 ### Off State
 
@@ -72,7 +73,7 @@ When the switch is in the center position, the popup shows an overview of both m
 
 ## Notes
 
-- Only one tab can be processed at a time.
+- The current version only supports one active tab at a time. To process another page, turn the current one off first.
 - Some DRM-protected websites cannot be captured through `tabCapture`.
 - Severe presets can reduce loudness substantially, so test carefully.
 
@@ -95,6 +96,7 @@ popup.html / popup.js
 
 ## Roadmap
 
+- Add single-sided deafness and asymmetric left/right channel simulation
 - Add audiogram import templates and quick-fill helpers for custom hearing profiles
 - Replace the custom audiogram sliders with a more clinical chart-style editor
 - Add export and share actions for custom hearing profiles
