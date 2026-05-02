@@ -69,7 +69,10 @@ When the switch is in the center position, the popup shows an overview of both m
 
 - Quick presets apply common compensation curves instantly.
 - The 8 sliders range from `-40dB` to `+40dB`.
+- The `+40dB` ceiling is a conservative product limit for the current implementation, not a clinical fitting rule. HearAdjust currently uses a simple 8-band peaking-EQ chain and does not yet add multiband compression, output limiting, feedback cancellation, or frequency lowering, so pushing much higher gain would more easily raise noise, exaggerate harsh bands, and create clipping or unstable listening.
 - Manual slider changes clear the active quick-preset highlight.
+
+For a deeper discussion of why the limit exists today, and what algorithms are commonly used when stronger hearing compensation is needed, see [docs/hearing-aid-compensation.md](docs/hearing-aid-compensation.md) and [docs/hearing-aid-compensation.zh-CN.md](docs/hearing-aid-compensation.zh-CN.md).
 
 ## Notes
 
