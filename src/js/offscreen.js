@@ -1,6 +1,7 @@
 // src/js/offscreen.js
 
 import { createHearAdjustNode, applyGains, EMPATHY_PRESETS } from './audioProcessor.js';
+import { MESSAGE_TARGETS, MESSAGE_TYPES } from './shared/constants.js';
 
 function log(...args) {
     console.log('[HearAdjust offscreen]', ...args);
@@ -20,35 +21,46 @@ let pendingPresetKey = null;
 let pendingCustomGains = null;
 const pendingBandGains = new Map();
 
-chrome.runtime.onMessage.addListener((message) => {
-    if (message.target !== 'offscreen') return;
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message.target !== MESSAGE_TARGETS.offscreen) return;
 
     log('Received message:', message.type, message);
 
-    switch (message.type) {
-        case 'START_OFFSCREEN_PROCESSING':
-            startProcessing(message.streamId);
-            break;
-        case 'STOP_OFFSCREEN_PROCESSING':
-            stopProcessing();
-            break;
-        case 'APPLY_PRESET':
-            applyPreset(message.preset);
-            break;
-        case 'APPLY_CUSTOM_GAINS':
-            applyCustomGains(message.gains);
-            break;
-        case 'UPDATE_FILTER_SETTINGS':
-            updateSingleBand(message.bandIndex, message.gainValue);
-            break;
-        default:
-            console.warn('Unknown offscreen message:', message.type);
-    }
+    void (async () => {
+        switch (message.type) {
+            case MESSAGE_TYPES.startOffscreenProcessing:
+                sendResponse(await startProcessing(message.streamId));
+                break;
+            case MESSAGE_TYPES.stopOffscreenProcessing:
+                stopProcessing();
+                sendResponse({ ok: true });
+                break;
+            case MESSAGE_TYPES.applyPreset:
+                applyPreset(message.preset);
+                sendResponse({ ok: true });
+                break;
+            case MESSAGE_TYPES.applyCustomGains:
+                applyCustomGains(message.gains);
+                sendResponse({ ok: true });
+                break;
+            case MESSAGE_TYPES.updateFilterSettings:
+                updateSingleBand(message.bandIndex, message.gainValue);
+                sendResponse({ ok: true });
+                break;
+            default:
+                console.warn('Unknown offscreen message:', message.type);
+                sendResponse({ ok: false, error: `Unknown offscreen message: ${message.type}` });
+        }
+    })();
+
+    return true;
 });
 
 async function startProcessing(streamId) {
     log('startProcessing called', { streamId });
-    if (audioContext) return;
+    if (audioContext) {
+        return { ok: true };
+    }
 
     try {
         audioStream = await navigator.mediaDevices.getUserMedia({
@@ -69,12 +81,23 @@ async function startProcessing(streamId) {
         flushPendingSettings();
 
         log('Audio processing started successfully');
+        return { ok: true };
     } catch (error) {
         logError('Error starting audio processing:', error);
+        if (audioStream) {
+            audioStream.getTracks().forEach(track => track.stop());
+            audioStream = null;
+        }
+        if (sourceNode) {
+            sourceNode.disconnect();
+            sourceNode = null;
+        }
+        processorGraph = null;
         if (audioContext) {
             audioContext.close();
             audioContext = null;
         }
+        return { ok: false, error: error?.message || 'Failed to start audio processing' };
     }
 }
 
@@ -179,6 +202,7 @@ function updateSingleBand(bandIndex, gainValue) {
 function applyBandGainToGraph(bandIndex, gainValue) {
     if (!processorGraph?.filters) return;
     if (bandIndex < 0 || bandIndex >= processorGraph.filters.length) return;
+    stopTinnitus();
     processorGraph.filters[bandIndex].gain.value = gainValue;
 }
 

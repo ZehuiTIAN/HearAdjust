@@ -9,6 +9,7 @@ export const EMPATHY_PRESETS = {
         nameEn: 'Mild Loss',
         severity: 1,
         description: '在嘈杂环境中难以辨别高音细节。日常安静的对话通常仍清晰，但需要更专注地倾听。这是最常见的听力障碍形式。',
+        descriptionEn: 'High-frequency details become harder to distinguish in noisy spaces. Quiet everyday conversation is still mostly clear, but it takes more focus. This is one of the most common forms of hearing loss.',
         // dB gains for [250, 500, 750, 1000, 2000, 4000, 6000, 8000] Hz
         // WHO mild: 26-40 dB HL; near-normal lows, downward slope into high frequencies
         gains: [-10, -15, -20, -20, -25, -35, -35, -35],
@@ -19,6 +20,7 @@ export const EMPATHY_PRESETS = {
         nameEn: 'Moderate Loss',
         severity: 2,
         description: '即使在安静环境中也难以理解言语，通常需要助听器。许多辅音（如 s、f、th）几乎消失，对话需要反复确认。',
+        descriptionEn: 'Speech becomes difficult to understand even in quiet rooms, and hearing aids are often needed. Many consonants such as s, f, and th nearly disappear, so conversation requires frequent repetition.',
         // WHO moderate: 41-60 dB HL; consistent mid-to-high frequency loss
         gains: [-25, -30, -35, -40, -45, -55, -55, -55],
         tinnitus: false,
@@ -28,6 +30,7 @@ export const EMPATHY_PRESETS = {
         nameEn: 'Severe Loss',
         severity: 3,
         description: '仅能感知非常响亮的声音。言语理解极为困难，日常交流主要依赖视觉线索和唇读，音乐世界几乎完全关闭。',
+        descriptionEn: 'Only very loud sounds remain perceptible. Speech understanding becomes extremely difficult, daily communication leans heavily on visual cues and lip reading, and much of music feels closed off.',
         // WHO severe: 61-80 dB HL; profound loss across all frequencies
         gains: [-55, -60, -65, -70, -75, -80, -80, -80],
         tinnitus: false,
@@ -37,6 +40,7 @@ export const EMPATHY_PRESETS = {
         nameEn: 'Presbycusis',
         severity: 2,
         description: '随年龄增长逐渐失去对高频声音的感知，是 65 岁以上人群最常见的听力障碍。背景噪声变得难以过滤，理解对话愈发吃力。',
+        descriptionEn: 'A gradual age-related loss of high frequencies, common in adults over 65. Background noise becomes harder to filter out and conversation takes increasing effort.',
         // Bilateral symmetrical high-frequency SNHL; near-normal at 1kHz, steep rolloff above 2kHz
         gains: [-10, -12, -15, -20, -30, -50, -60, -65],
         tinnitus: false,
@@ -46,6 +50,7 @@ export const EMPATHY_PRESETS = {
         nameEn: 'Noise-Induced',
         severity: 2,
         description: '长期暴露于高强度噪声（工厂、音乐会、耳机）在 4kHz 附近造成特征性的"凹陷"。一旦形成，这种损伤是永久性的。',
+        descriptionEn: 'Long-term exposure to loud noise, from factories, concerts, or headphones, often creates a characteristic notch around 4 kHz. Once present, this damage is usually permanent.',
         // Characteristic 4kHz notch; partial recovery at 8kHz is clinically diagnostic
         gains: [-5, -10, -12, -15, -20, -50, -35, -25],
         tinnitus: false,
@@ -55,6 +60,7 @@ export const EMPATHY_PRESETS = {
         nameEn: 'Tinnitus',
         severity: 1,
         description: '一种持续存在于内耳的嗡嗡声、铃声或哨声，即使在完全寂静的环境中也无法消失。全球约 15% 的人口受此困扰。',
+        descriptionEn: 'A continuous internal ringing, buzzing, or whistling that stays present even in complete silence. Roughly fifteen percent of people worldwide experience some form of it.',
         gains: [0, 0, 0, 0, 0, 0, 0, 0],
         tinnitus: true,
         tinnitusFreq: 6000,
@@ -65,6 +71,7 @@ export const EMPATHY_PRESETS = {
         nameEn: 'Low-Frequency Loss',
         severity: 2,
         description: '一种相对罕见的类型，对低沉声音（雷声、男低音、引擎声）的感知大幅减弱，而高频声音仍较为清晰。',
+        descriptionEn: 'A rarer pattern where low sounds such as thunder, deep voices, and engines are strongly reduced while higher frequencies remain relatively clear.',
         // Reverse-slope pattern (Menière's / endolymphatic hydrops); high frequencies relatively spared
         gains: [-60, -50, -40, -30, -15, -10, -5, 0],
         tinnitus: false,
@@ -74,6 +81,7 @@ export const EMPATHY_PRESETS = {
         nameEn: "Author's Audiogram",
         severity: 3,
         description: '这是作者本人的听力曲线。中频区域（750Hz–2000Hz）损失最为严重，几乎所有语音辅音与元音细节都难以感知；低频轻度受损，高频略有回升。这是这款应用真正被创作出来的听觉起点。',
+        descriptionEn: "This is the author's own hearing curve. Loss is most severe in the mid-frequency range (750 Hz-2 kHz) - the band most critical for speech - making nearly all consonants and vowel nuance nearly inaudible. Low frequencies are mildly affected; higher frequencies recover somewhat. This is the everyday listening reality that the app was built from.",
         gains: [-10, -20, -45, -65, -75, -75, -55, -40],
         tinnitus: false,
     },
@@ -83,18 +91,22 @@ export const EMPATHY_PRESETS = {
 export const HEARING_AID_PRESETS = {
     flat: {
         name: '平坦（重置）',
+        nameEn: 'Flat Reset',
         gains: [0, 0, 0, 0, 0, 0, 0, 0],
     },
     speech: {
         name: '语音清晰',
+        nameEn: 'Speech Focus',
         gains: [-2, 0, 2, 5, 8, 10, 8, 5],
     },
     boost_highs: {
         name: '高频增强',
+        nameEn: 'Treble Boost',
         gains: [0, 0, 0, 3, 8, 14, 18, 18],
     },
     boost_lows: {
         name: '低频增强',
+        nameEn: 'Bass Boost',
         gains: [12, 8, 5, 2, 0, 0, 0, 0],
     },
 };

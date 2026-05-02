@@ -1,4 +1,17 @@
 import { FREQUENCY_BANDS, EMPATHY_PRESETS, HEARING_AID_PRESETS } from './audioProcessor.js';
+import {
+    CUSTOM_EMPATHY_PRESET_KEY,
+    MESSAGE_TYPES,
+    MODES,
+} from './shared/constants.js';
+import {
+    applyCustomEmpathyGains,
+    applyEmpathyPreset,
+    getProcessingState,
+    requestProcessingState,
+    updateFilterBand,
+} from './popup/runtimeClient.js';
+import { loadPopupState, savePopupState } from './popup/storage.js';
 
 function log(...args) {
     console.log('[HearAdjust popup]', ...args);
@@ -85,17 +98,6 @@ const UI_STRINGS = {
     },
 };
 
-const EMPATHY_DESCRIPTION_EN = {
-    mild: 'High-frequency details become harder to distinguish in noisy spaces. Quiet everyday conversation is still mostly clear, but it takes more focus. This is one of the most common forms of hearing loss.',
-    moderate: 'Speech becomes difficult to understand even in quiet rooms, and hearing aids are often needed. Many consonants such as s, f, and th nearly disappear, so conversation requires frequent repetition.',
-    severe: 'Only very loud sounds remain perceptible. Speech understanding becomes extremely difficult, daily communication leans heavily on visual cues and lip reading, and much of music feels closed off.',
-    presbycusis: 'A gradual age-related loss of high frequencies, common in adults over 65. Background noise becomes harder to filter out and conversation takes increasing effort.',
-    nihl: 'Long-term exposure to loud noise, from factories, concerts, or headphones, often creates a characteristic notch around 4 kHz. Once present, this damage is usually permanent.',
-    tinnitus: 'A continuous internal ringing, buzzing, or whistling that stays present even in complete silence. Roughly fifteen percent of people worldwide experience some form of it.',
-    low_frequency: 'A rarer pattern where low sounds such as thunder, deep voices, and engines are strongly reduced while higher frequencies remain relatively clear.',
-    author: "This is the author's own hearing curve. Loss is most severe in the mid-frequency range (750 Hz–2 kHz) — the band most critical for speech — making nearly all consonants and vowel nuance nearly inaudible. Low frequencies are mildly affected; higher frequencies recover somewhat. This is the everyday listening reality that the app was built from.",
-};
-
 const modeSwitch = document.getElementById('modeSwitch');
 const langSwitch = document.getElementById('langSwitch');
 const statusDot = document.getElementById('statusDot');
@@ -128,15 +130,15 @@ const panelHearingAid = document.getElementById('panel-hearing-aid');
 const switchOptions = Array.from(document.querySelectorAll('.switch-option'));
 const langOptions = Array.from(document.querySelectorAll('.lang-option'));
 
-let isActive = false;
-let currentMode = 'empathy';
-let currentLanguage = 'zh';
-let selectedEmpathyPreset = null;
-let selectedHaPreset = 'flat';
-let eqGains = new Array(FREQUENCY_BANDS.length).fill(0);
-let empathyCustomGains = new Array(FREQUENCY_BANDS.length).fill(0);
-
-const CUSTOM_EMPATHY_PRESET_KEY = 'custom_audiogram';
+const state = {
+    isActive: false,
+    currentMode: MODES.empathy,
+    currentLanguage: 'zh',
+    selectedEmpathyPreset: null,
+    selectedHaPreset: 'flat',
+    eqGains: new Array(FREQUENCY_BANDS.length).fill(0),
+    empathyCustomGains: new Array(FREQUENCY_BANDS.length).fill(0),
+};
 const EMPATHY_LOSS_MIN_DB = -110;
 
 const PRESET_ICONS = {
@@ -158,70 +160,61 @@ async function init() {
     buildEmpathyCustomEqualizer();
     buildHaQuickPresets();
     buildEqualizer();
-    applyModeTab(currentMode);
+    applyModeTab(state.currentMode);
     applyLanguage();
 
-    if (selectedEmpathyPreset) {
-        setSelectedPreset(selectedEmpathyPreset);
+    if (state.selectedEmpathyPreset) {
+        setSelectedPreset(state.selectedEmpathyPreset);
     }
 
     restoreEmpathyCustomSliders();
-    restoreHaPreset(selectedHaPreset);
+    restoreHaPreset(state.selectedHaPreset);
     restoreEqSliders();
     syncModeSwitchUi();
     syncLanguageSwitchUi();
 
-    chrome.runtime.sendMessage({ type: 'GET_STATE' }, (resp) => {
-        if (chrome.runtime.lastError) {
-            logError('GET_STATE failed:', chrome.runtime.lastError.message);
-            statusText.textContent = t('statusQueryFailed');
-            return;
-        }
-
-        log('GET_STATE response:', resp);
-        setActiveState(resp?.isActive ?? false, false);
-    });
+    try {
+        const response = await getProcessingState();
+        log('GET_STATE response:', response);
+        setActiveState(response?.isActive ?? false, false);
+    } catch (error) {
+        logError('GET_STATE failed:', error.message);
+        statusText.textContent = t('statusQueryFailed');
+    }
 }
 
 async function loadSavedState() {
-    return new Promise((resolve) => {
-        chrome.storage.local.get(
-            ['mode', 'uiLanguage', 'empathyPreset', 'empathyCustomGains', 'haPreset', 'eqGains'],
-            (data) => {
-                if (data.mode) currentMode = data.mode;
-                if (data.uiLanguage) currentLanguage = data.uiLanguage;
-                if (data.empathyPreset) selectedEmpathyPreset = data.empathyPreset;
-                if (data.empathyCustomGains) empathyCustomGains = data.empathyCustomGains;
-                if (data.haPreset) selectedHaPreset = data.haPreset;
-                if (data.eqGains) eqGains = data.eqGains;
-                resolve();
-            }
-        );
-    });
+    const savedState = await loadPopupState();
+    if (savedState.mode) state.currentMode = savedState.mode;
+    if (savedState.uiLanguage) state.currentLanguage = savedState.uiLanguage;
+    if (savedState.empathyPreset) state.selectedEmpathyPreset = savedState.empathyPreset;
+    if (savedState.empathyCustomGains) state.empathyCustomGains = savedState.empathyCustomGains;
+    if (savedState.haPreset) state.selectedHaPreset = savedState.haPreset;
+    if (savedState.eqGains) state.eqGains = savedState.eqGains;
 }
 
 function saveState() {
     log('Saving popup state:', {
-        currentMode,
-        currentLanguage,
-        selectedEmpathyPreset,
-        empathyCustomGains,
-        selectedHaPreset,
-        eqGains,
+        currentMode: state.currentMode,
+        currentLanguage: state.currentLanguage,
+        selectedEmpathyPreset: state.selectedEmpathyPreset,
+        empathyCustomGains: state.empathyCustomGains,
+        selectedHaPreset: state.selectedHaPreset,
+        eqGains: state.eqGains,
     });
 
-    chrome.storage.local.set({
-        mode: currentMode,
-        uiLanguage: currentLanguage,
-        empathyPreset: selectedEmpathyPreset,
-        empathyCustomGains,
-        haPreset: selectedHaPreset,
-        eqGains,
+    savePopupState({
+        mode: state.currentMode,
+        uiLanguage: state.currentLanguage,
+        empathyPreset: state.selectedEmpathyPreset,
+        empathyCustomGains: state.empathyCustomGains,
+        haPreset: state.selectedHaPreset,
+        eqGains: state.eqGains,
     });
 }
 
 function t(key, vars = {}) {
-    const template = UI_STRINGS[currentLanguage]?.[key] ?? UI_STRINGS.zh[key] ?? key;
+    const template = UI_STRINGS[state.currentLanguage]?.[key] ?? UI_STRINGS.zh[key] ?? key;
     return template.replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? '');
 }
 
@@ -241,37 +234,39 @@ function getEmpathyPresetMeta(key) {
 function getLocalizedEmpathyName(key) {
     const preset = getEmpathyPresetMeta(key);
     if (!preset) return '';
-    return currentLanguage === 'en' ? (preset.nameEn || preset.name) : preset.name;
+    return state.currentLanguage === 'en' ? (preset.nameEn || preset.name) : preset.name;
 }
 
 function getSecondaryEmpathyName(key) {
     const preset = getEmpathyPresetMeta(key);
     if (!preset) return '';
-    return currentLanguage === 'en' ? preset.name : (preset.nameEn || preset.name);
+    return state.currentLanguage === 'en' ? preset.name : (preset.nameEn || preset.name);
 }
 
 function getLocalizedEmpathyDescription(key) {
     const preset = getEmpathyPresetMeta(key);
     if (!preset) return '';
     if (key === CUSTOM_EMPATHY_PRESET_KEY) {
-        return currentLanguage === 'en' ? preset.descriptionEn : preset.description;
+        return state.currentLanguage === 'en' ? preset.descriptionEn : preset.description;
     }
-    return currentLanguage === 'en' ? (EMPATHY_DESCRIPTION_EN[key] || preset.description) : preset.description;
+    return state.currentLanguage === 'en' ? (preset.descriptionEn || preset.description) : preset.description;
 }
 
 function getHearingAidPresetName(key) {
-    return t(`ha_${key}`);
+    const preset = HEARING_AID_PRESETS[key];
+    if (!preset) return key;
+    return state.currentLanguage === 'en' ? (preset.nameEn || preset.name) : preset.name;
 }
 
 function applyLanguage() {
-    document.documentElement.lang = UI_STRINGS[currentLanguage].htmlLang;
+    document.documentElement.lang = UI_STRINGS[state.currentLanguage].htmlLang;
     modeSwitch.setAttribute('aria-label', t('modeSwitchAria'));
     langSwitch.setAttribute('aria-label', t('langSwitchAria'));
     appSubtitle.textContent = t('subtitle');
     appIntro.textContent = t('intro');
-    switchOptions.find((option) => option.dataset.switchState === 'empathy').textContent = t('switchEmpathy');
-    switchOptions.find((option) => option.dataset.switchState === 'off').textContent = t('switchOff');
-    switchOptions.find((option) => option.dataset.switchState === 'hearing_aid').textContent = t('switchHearingAid');
+    switchOptions.find((option) => option.dataset.switchState === MODES.empathy).textContent = t('switchEmpathy');
+    switchOptions.find((option) => option.dataset.switchState === MODES.off).textContent = t('switchOff');
+    switchOptions.find((option) => option.dataset.switchState === MODES.hearingAid).textContent = t('switchHearingAid');
     switchLegendLeft.textContent = t('legendLeft');
     switchLegendCenter.textContent = t('legendCenter');
     switchLegendRight.textContent = t('legendRight');
@@ -288,17 +283,17 @@ function applyLanguage() {
 
     buildEmpathyPresets();
     buildHaQuickPresets();
-    if (selectedEmpathyPreset) {
-        setSelectedPreset(selectedEmpathyPreset);
+    if (state.selectedEmpathyPreset) {
+        setSelectedPreset(state.selectedEmpathyPreset);
     }
-    restoreHaPreset(selectedHaPreset);
+    restoreHaPreset(state.selectedHaPreset);
     syncLanguageSwitchUi();
-    setActiveState(isActive, false);
+    setActiveState(state.isActive, false);
 }
 
 function syncLanguageSwitchUi() {
     langOptions.forEach((option) => {
-        const selected = option.dataset.lang === currentLanguage;
+        const selected = option.dataset.lang === state.currentLanguage;
         option.classList.toggle('active', selected);
         option.setAttribute('aria-pressed', String(selected));
     });
@@ -307,16 +302,22 @@ function syncLanguageSwitchUi() {
 langOptions.forEach((option) => {
     option.addEventListener('click', () => {
         const lang = option.dataset.lang;
-        if (lang === currentLanguage) return;
-        currentLanguage = lang;
+        if (lang === state.currentLanguage) return;
+        state.currentLanguage = lang;
         saveState();
         applyLanguage();
     });
 });
 
 function setActiveState(active, sendToOffscreen = true) {
-    log('Updating active state:', { active, sendToOffscreen, currentMode, currentLanguage, selectedEmpathyPreset });
-    isActive = active;
+    log('Updating active state:', {
+        active,
+        sendToOffscreen,
+        currentMode: state.currentMode,
+        currentLanguage: state.currentLanguage,
+        selectedEmpathyPreset: state.selectedEmpathyPreset,
+    });
+    state.isActive = active;
     syncModeSwitchUi();
     updatePanelVisibility();
     statusDot.classList.toggle('active', active);
@@ -332,7 +333,7 @@ function setActiveState(active, sendToOffscreen = true) {
 }
 
 function getSwitchState() {
-    return isActive ? currentMode : 'off';
+    return state.isActive ? state.currentMode : MODES.off;
 }
 
 function syncModeSwitchUi() {
@@ -351,40 +352,36 @@ function setSwitchDisabled(disabled) {
     });
 }
 
-function requestProcessing(wantActive) {
+async function requestProcessing(wantActive) {
     setSwitchDisabled(true);
-    log('Request processing state:', { wantActive, currentMode });
+    log('Request processing state:', { wantActive, currentMode: state.currentMode });
 
-    chrome.runtime.sendMessage(
-        { type: wantActive ? 'START_PROCESSING' : 'STOP_PROCESSING' },
-        (resp) => {
-            setSwitchDisabled(false);
-            if (chrome.runtime.lastError) {
-                logError('Mode switch request failed:', chrome.runtime.lastError.message);
-                statusText.textContent = t('switchFailed');
-                syncModeSwitchUi();
-                return;
-            }
-
-            log('Mode switch response:', resp);
-            if (resp?.error) {
-                statusText.textContent = t('startFailed', { error: resp.error });
-            }
-
-            setActiveState(resp?.isActive ?? false);
+    try {
+        const response = await requestProcessingState(wantActive);
+        log('Mode switch response:', response);
+        if (response?.error) {
+            statusText.textContent = t('startFailed', { error: response.error });
         }
-    );
+
+        setActiveState(response?.isActive ?? false);
+    } catch (error) {
+        logError('Mode switch request failed:', error.message);
+        statusText.textContent = t('switchFailed');
+        syncModeSwitchUi();
+    } finally {
+        setSwitchDisabled(false);
+    }
 }
 
 function selectMode(mode) {
-    if (mode !== 'empathy' && mode !== 'hearing_aid') return;
+    if (mode !== MODES.empathy && mode !== MODES.hearingAid) return;
 
-    const modeChanged = currentMode !== mode;
-    currentMode = mode;
+    const modeChanged = state.currentMode !== mode;
+    state.currentMode = mode;
     applyModeTab(mode);
     saveState();
 
-    if (isActive) {
+    if (state.isActive) {
         if (modeChanged) {
             applyCurrentSettings();
         }
@@ -397,10 +394,14 @@ function selectMode(mode) {
 switchOptions.forEach((option) => {
     option.addEventListener('click', () => {
         const targetState = option.dataset.switchState;
-        log('Tri-state switch clicked:', { targetState, isActive, currentMode });
+        log('Tri-state switch clicked:', {
+            targetState,
+            isActive: state.isActive,
+            currentMode: state.currentMode,
+        });
 
-        if (targetState === 'off') {
-            if (!isActive) {
+        if (targetState === MODES.off) {
+            if (!state.isActive) {
                 syncModeSwitchUi();
                 return;
             }
@@ -410,67 +411,54 @@ switchOptions.forEach((option) => {
         }
 
         selectMode(targetState);
-        if (!isActive) {
+        if (!state.isActive) {
             requestProcessing(true);
         }
     });
 });
 
 function applyCurrentSettings() {
-    if (!isActive) return;
+    if (!state.isActive) return;
 
     log('Applying current settings:', {
-        currentMode,
-        selectedEmpathyPreset,
-        empathyCustomGains,
-        selectedHaPreset,
-        eqGains,
+        currentMode: state.currentMode,
+        selectedEmpathyPreset: state.selectedEmpathyPreset,
+        empathyCustomGains: state.empathyCustomGains,
+        selectedHaPreset: state.selectedHaPreset,
+        eqGains: state.eqGains,
     });
 
-    if (currentMode === 'empathy') {
-        if (selectedEmpathyPreset === CUSTOM_EMPATHY_PRESET_KEY) {
-            chrome.runtime.sendMessage({
-                type: 'APPLY_CUSTOM_GAINS',
-                target: 'offscreen',
-                gains: empathyCustomGains,
-            });
+    if (state.currentMode === MODES.empathy) {
+        if (state.selectedEmpathyPreset === CUSTOM_EMPATHY_PRESET_KEY) {
+            applyCustomEmpathyGains(state.empathyCustomGains);
         } else {
-            chrome.runtime.sendMessage({
-                type: 'APPLY_PRESET',
-                target: 'offscreen',
-                preset: selectedEmpathyPreset,
-            });
+            applyEmpathyPreset(state.selectedEmpathyPreset);
         }
     } else {
-        eqGains.forEach((gain, index) => {
-            chrome.runtime.sendMessage({
-                type: 'UPDATE_FILTER_SETTINGS',
-                target: 'offscreen',
-                bandIndex: index,
-                gainValue: gain,
-            });
+        state.eqGains.forEach((gain, index) => {
+            updateFilterBand(index, gain);
         });
     }
 }
 
 function applyModeTab(mode) {
-    currentMode = mode;
+    state.currentMode = mode;
     updatePanelVisibility();
 }
 
 function updatePanelVisibility() {
-    const showOff = !isActive;
+    const showOff = !state.isActive;
     panelOff.classList.toggle('hidden', !showOff);
-    panelEmpathy.classList.toggle('hidden', showOff || currentMode !== 'empathy');
-    panelHearingAid.classList.toggle('hidden', showOff || currentMode !== 'hearing_aid');
+    panelEmpathy.classList.toggle('hidden', showOff || state.currentMode !== MODES.empathy);
+    panelHearingAid.classList.toggle('hidden', showOff || state.currentMode !== MODES.hearingAid);
 }
 
 function updateStatusText() {
-    if (!isActive) return;
+    if (!state.isActive) return;
 
-    if (currentMode === 'empathy' && selectedEmpathyPreset) {
-        statusText.textContent = t('empathySimulating', { name: getLocalizedEmpathyName(selectedEmpathyPreset) });
-    } else if (currentMode === 'empathy') {
+    if (state.currentMode === MODES.empathy && state.selectedEmpathyPreset) {
+        statusText.textContent = t('empathySimulating', { name: getLocalizedEmpathyName(state.selectedEmpathyPreset) });
+    } else if (state.currentMode === MODES.empathy) {
         statusText.textContent = t('empathyActive');
     } else {
         statusText.textContent = t('hearingAidActive');
@@ -518,14 +506,14 @@ function buildEmpathyPresets() {
 
 function getEmpathyGainsForKey(key) {
     if (key === CUSTOM_EMPATHY_PRESET_KEY) {
-        return empathyCustomGains;
+        return state.empathyCustomGains;
     }
 
     return EMPATHY_PRESETS[key]?.gains ?? new Array(FREQUENCY_BANDS.length).fill(0);
 }
 
 function getDisplayedEmpathyGains() {
-    return getEmpathyGainsForKey(selectedEmpathyPreset);
+    return getEmpathyGainsForKey(state.selectedEmpathyPreset);
 }
 
 function buildSeverityDots(level) {
@@ -540,7 +528,7 @@ function buildSeverityDots(level) {
 }
 
 function onPresetSelected(key) {
-    selectedEmpathyPreset = key;
+    state.selectedEmpathyPreset = key;
     setSelectedPreset(key);
     saveState();
     applyCurrentSettings();
@@ -585,7 +573,7 @@ function buildEmpathyCustomEqualizer() {
         slider.min = EMPATHY_LOSS_MIN_DB;
         slider.max = 0;
         slider.step = 1;
-        slider.value = empathyCustomGains[index] ?? 0;
+        slider.value = state.empathyCustomGains[index] ?? 0;
         slider.dataset.index = index;
 
         const gainLabel = document.createElement('span');
@@ -594,16 +582,16 @@ function buildEmpathyCustomEqualizer() {
 
         slider.addEventListener('input', (event) => {
             const gain = parseFloat(event.target.value);
-            if (selectedEmpathyPreset !== CUSTOM_EMPATHY_PRESET_KEY) {
-                empathyCustomGains = [...getDisplayedEmpathyGains()];
-                selectedEmpathyPreset = CUSTOM_EMPATHY_PRESET_KEY;
+            if (state.selectedEmpathyPreset !== CUSTOM_EMPATHY_PRESET_KEY) {
+                state.empathyCustomGains = [...getDisplayedEmpathyGains()];
+                state.selectedEmpathyPreset = CUSTOM_EMPATHY_PRESET_KEY;
             }
-            empathyCustomGains[index] = gain;
+            state.empathyCustomGains[index] = gain;
             gainLabel.textContent = formatGain(gain);
             setSelectedPreset(CUSTOM_EMPATHY_PRESET_KEY);
             saveState();
 
-            if (currentMode === 'empathy' && isActive) {
+            if (state.currentMode === MODES.empathy && state.isActive) {
                 applyCurrentSettings();
                 updateStatusText();
             }
@@ -637,8 +625,8 @@ function buildHaQuickPresets() {
 }
 
 function onHaPresetSelected(key) {
-    selectedHaPreset = key;
-    eqGains = [...HEARING_AID_PRESETS[key].gains];
+    state.selectedHaPreset = key;
+    state.eqGains = [...HEARING_AID_PRESETS[key].gains];
     restoreHaPreset(key);
     restoreEqSliders();
     saveState();
@@ -667,7 +655,7 @@ function buildEqualizer() {
         slider.min = -40;
         slider.max = 40;
         slider.step = 1;
-        slider.value = eqGains[index] ?? 0;
+        slider.value = state.eqGains[index] ?? 0;
         slider.dataset.index = index;
 
         const gainLabel = document.createElement('span');
@@ -676,19 +664,14 @@ function buildEqualizer() {
 
         slider.addEventListener('input', (event) => {
             const gain = parseFloat(event.target.value);
-            eqGains[index] = gain;
+            state.eqGains[index] = gain;
             gainLabel.textContent = formatGain(gain);
-            selectedHaPreset = null;
+            state.selectedHaPreset = null;
             restoreHaPreset(null);
             saveState();
 
-            if (isActive) {
-                chrome.runtime.sendMessage({
-                    type: 'UPDATE_FILTER_SETTINGS',
-                    target: 'offscreen',
-                    bandIndex: index,
-                    gainValue: gain,
-                });
+            if (state.isActive) {
+                updateFilterBand(index, gain);
             }
         });
 
@@ -701,8 +684,8 @@ function buildEqualizer() {
 
 function restoreEqSliders() {
     equalizerControls.querySelectorAll('.eq-slider').forEach((slider, index) => {
-        slider.value = eqGains[index] ?? 0;
-        slider.nextElementSibling.textContent = formatGain(eqGains[index] ?? 0);
+        slider.value = state.eqGains[index] ?? 0;
+        slider.nextElementSibling.textContent = formatGain(state.eqGains[index] ?? 0);
     });
 }
 
@@ -716,7 +699,7 @@ function formatGain(value) {
 }
 
 chrome.runtime.onMessage.addListener((message) => {
-    if (message.type === 'STATE_CHANGED') {
+    if (message.type === MESSAGE_TYPES.stateChanged) {
         log('Received STATE_CHANGED:', message);
         if (message.error && !message.isActive) {
             statusText.textContent = t('startFailed', { error: message.error });
