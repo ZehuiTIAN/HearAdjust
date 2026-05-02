@@ -91,6 +91,7 @@ const EMPATHY_DESCRIPTION_EN = {
     nihl: 'Long-term exposure to loud noise, from factories, concerts, or headphones, often creates a characteristic notch around 4 kHz. Once present, this damage is usually permanent.',
     tinnitus: 'A continuous internal ringing, buzzing, or whistling that stays present even in complete silence. Roughly fifteen percent of people worldwide experience some form of it.',
     low_frequency: 'A rarer pattern where low sounds such as thunder, deep voices, and engines are strongly reduced while higher frequencies remain relatively clear.',
+    author: "This is the author's own hearing curve. Loss is most severe in the mid-frequency range (750 Hz–2 kHz) — the band most critical for speech — making nearly all consonants and vowel nuance nearly inaudible. Low frequencies are mildly affected; higher frequencies recover somewhat. This is the everyday listening reality that the app was built from.",
 };
 
 const modeSwitch = document.getElementById('modeSwitch');
@@ -144,6 +145,7 @@ const PRESET_ICONS = {
     nihl: '🎧',
     tinnitus: '🔔',
     low_frequency: '🎶',
+    author: '🧑‍💻',
     [CUSTOM_EMPATHY_PRESET_KEY]: '🫱',
 };
 

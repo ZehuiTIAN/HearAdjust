@@ -63,6 +63,14 @@ export const EMPATHY_PRESETS = {
         gains: [-25, -20, -15, -8, 0, 0, 0, 0],
         tinnitus: false,
     },
+    author: {
+        name: '作者的听力图',
+        nameEn: "Author's Audiogram",
+        severity: 3,
+        description: '这是作者本人的听力曲线。中频区域（750Hz–2000Hz）损失最为严重，几乎所有语音辅音与元音细节都难以感知；低频轻度受损，高频略有回升。这是这款应用真正被创作出来的听觉起点。',
+        gains: [-10, -20, -45, -65, -75, -75, -55, -40],
+        tinnitus: false,
+    },
 };
 
 // 助听模式：快速预设方案
