@@ -10,7 +10,8 @@ export const EMPATHY_PRESETS = {
         severity: 1,
         description: '在嘈杂环境中难以辨别高音细节。日常安静的对话通常仍清晰，但需要更专注地倾听。这是最常见的听力障碍形式。',
         // dB gains for [250, 500, 750, 1000, 2000, 4000, 6000, 8000] Hz
-        gains: [0, 0, 0, -5, -10, -15, -20, -20],
+        // WHO mild: 26-40 dB HL; near-normal lows, downward slope into high frequencies
+        gains: [-10, -15, -20, -20, -25, -35, -35, -35],
         tinnitus: false,
     },
     moderate: {
@@ -18,7 +19,8 @@ export const EMPATHY_PRESETS = {
         nameEn: 'Moderate Loss',
         severity: 2,
         description: '即使在安静环境中也难以理解言语，通常需要助听器。许多辅音（如 s、f、th）几乎消失，对话需要反复确认。',
-        gains: [0, -5, -10, -15, -20, -30, -35, -35],
+        // WHO moderate: 41-60 dB HL; consistent mid-to-high frequency loss
+        gains: [-25, -30, -35, -40, -45, -55, -55, -55],
         tinnitus: false,
     },
     severe: {
@@ -26,7 +28,8 @@ export const EMPATHY_PRESETS = {
         nameEn: 'Severe Loss',
         severity: 3,
         description: '仅能感知非常响亮的声音。言语理解极为困难，日常交流主要依赖视觉线索和唇读，音乐世界几乎完全关闭。',
-        gains: [-5, -10, -20, -30, -40, -40, -40, -40],
+        // WHO severe: 61-80 dB HL; profound loss across all frequencies
+        gains: [-55, -60, -65, -70, -75, -80, -80, -80],
         tinnitus: false,
     },
     presbycusis: {
@@ -34,7 +37,8 @@ export const EMPATHY_PRESETS = {
         nameEn: 'Presbycusis',
         severity: 2,
         description: '随年龄增长逐渐失去对高频声音的感知，是 65 岁以上人群最常见的听力障碍。背景噪声变得难以过滤，理解对话愈发吃力。',
-        gains: [0, 0, -2, -5, -12, -22, -30, -35],
+        // Bilateral symmetrical high-frequency SNHL; near-normal at 1kHz, steep rolloff above 2kHz
+        gains: [-10, -12, -15, -20, -30, -50, -60, -65],
         tinnitus: false,
     },
     nihl: {
@@ -42,7 +46,8 @@ export const EMPATHY_PRESETS = {
         nameEn: 'Noise-Induced',
         severity: 2,
         description: '长期暴露于高强度噪声（工厂、音乐会、耳机）在 4kHz 附近造成特征性的"凹陷"。一旦形成，这种损伤是永久性的。',
-        gains: [0, 0, 0, -2, -5, -30, -15, -10],
+        // Characteristic 4kHz notch; partial recovery at 8kHz is clinically diagnostic
+        gains: [-5, -10, -12, -15, -20, -50, -35, -25],
         tinnitus: false,
     },
     tinnitus: {
@@ -60,7 +65,8 @@ export const EMPATHY_PRESETS = {
         nameEn: 'Low-Frequency Loss',
         severity: 2,
         description: '一种相对罕见的类型，对低沉声音（雷声、男低音、引擎声）的感知大幅减弱，而高频声音仍较为清晰。',
-        gains: [-25, -20, -15, -8, 0, 0, 0, 0],
+        // Reverse-slope pattern (Menière's / endolymphatic hydrops); high frequencies relatively spared
+        gains: [-60, -50, -40, -30, -15, -10, -5, 0],
         tinnitus: false,
     },
     author: {
