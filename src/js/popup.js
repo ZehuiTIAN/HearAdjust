@@ -36,6 +36,7 @@ const UI_STRINGS = {
         offHearingText: '按频段提升或削减声音，用于根据听力图做个性化补偿，帮助听清语音细节。',
         empathyCustomTitle: '我的听力图',
         empathyCustomCaption: '把你的听力损失填进来，让别人听到你听到的世界',
+        empathyPresetCaption: '调整任一频段后，将自动切换为自定义听力图。',
         hearingIntro: '根据您的听力图调整各频段增益，提升语音清晰度。',
         footer: '一个关于倾听与关怀的项目',
         customPresetName: '自定义听力图',
@@ -72,6 +73,7 @@ const UI_STRINGS = {
         offHearingText: 'Boost or reduce each band to match an audiogram and compensate for loss, making speech details easier to catch.',
         empathyCustomTitle: 'My Audiogram',
         empathyCustomCaption: 'Enter your own hearing loss curve so other people can hear what you hear.',
+        empathyPresetCaption: 'Adjust any band to switch this preset into a custom audiogram.',
         hearingIntro: 'Adjust each band to match your audiogram and improve speech clarity.',
         footer: 'A small project about listening and care',
         customPresetName: 'Custom Audiogram',
@@ -514,6 +516,18 @@ function buildEmpathyPresets() {
     });
 }
 
+function getEmpathyGainsForKey(key) {
+    if (key === CUSTOM_EMPATHY_PRESET_KEY) {
+        return empathyCustomGains;
+    }
+
+    return EMPATHY_PRESETS[key]?.gains ?? new Array(FREQUENCY_BANDS.length).fill(0);
+}
+
+function getDisplayedEmpathyGains() {
+    return getEmpathyGainsForKey(selectedEmpathyPreset);
+}
+
 function buildSeverityDots(level) {
     const container = document.createElement('div');
     container.className = 'preset-severity';
@@ -543,7 +557,16 @@ function setSelectedPreset(key) {
         presetDescription.classList.remove('hidden');
     }
 
-    empathyCustomEditor.classList.toggle('hidden', key !== CUSTOM_EMPATHY_PRESET_KEY);
+    syncEmpathyEditor(key);
+}
+
+function syncEmpathyEditor(key) {
+    empathyCustomEditor.classList.toggle('hidden', !key);
+    if (!key) return;
+
+    empathyCustomTitle.textContent = getLocalizedEmpathyName(key);
+    empathyCustomCaption.textContent = key === CUSTOM_EMPATHY_PRESET_KEY ? t('empathyCustomCaption') : t('empathyPresetCaption');
+    restoreEmpathyCustomSliders();
 }
 
 function buildEmpathyCustomEqualizer() {
@@ -571,9 +594,12 @@ function buildEmpathyCustomEqualizer() {
 
         slider.addEventListener('input', (event) => {
             const gain = parseFloat(event.target.value);
+            if (selectedEmpathyPreset !== CUSTOM_EMPATHY_PRESET_KEY) {
+                empathyCustomGains = [...getDisplayedEmpathyGains()];
+                selectedEmpathyPreset = CUSTOM_EMPATHY_PRESET_KEY;
+            }
             empathyCustomGains[index] = gain;
             gainLabel.textContent = formatGain(gain);
-            selectedEmpathyPreset = CUSTOM_EMPATHY_PRESET_KEY;
             setSelectedPreset(CUSTOM_EMPATHY_PRESET_KEY);
             saveState();
 
@@ -591,9 +617,10 @@ function buildEmpathyCustomEqualizer() {
 }
 
 function restoreEmpathyCustomSliders() {
+    const gains = getDisplayedEmpathyGains();
     empathyEqualizerControls.querySelectorAll('.eq-slider').forEach((slider, index) => {
-        slider.value = empathyCustomGains[index] ?? 0;
-        slider.nextElementSibling.textContent = formatGain(empathyCustomGains[index] ?? 0);
+        slider.value = gains[index] ?? 0;
+        slider.nextElementSibling.textContent = formatGain(gains[index] ?? 0);
     });
 }
 

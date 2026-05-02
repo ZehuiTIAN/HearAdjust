@@ -96,7 +96,7 @@ popup.html / popup.js
 
 ## Roadmap
 
-- Add single-sided deafness and asymmetric left/right channel simulation
+- Add independent left/right ear controls, including single-sided deafness and asymmetric channel simulation
 - Add audiogram import templates and quick-fill helpers for custom hearing profiles
 - Replace the custom audiogram sliders with a more clinical chart-style editor
 - Add export and share actions for custom hearing profiles
