@@ -22,6 +22,14 @@ import {
 } from './popup/runtimeClient.js';
 import { loadPopupState, savePopupState } from './popup/storage.js';
 
+function log(...args) {
+    console.log('[HearAdjust popup]', ...args);
+}
+
+function logError(...args) {
+    console.error('[HearAdjust popup]', ...args);
+}
+
 const modeSwitch = document.getElementById('modeSwitch');
 const langSwitch = document.getElementById('langSwitch');
 const statusDot = document.getElementById('statusDot');
@@ -328,7 +336,9 @@ function updateStatusText() {
     if (!state.isActive) return;
 
     if (state.currentMode === MODES.empathy && state.selectedEmpathyPreset) {
-        statusText.textContent = t('empathySimulating', { name: getLocalizedEmpathyName(state.selectedEmpathyPreset) });
+        statusText.textContent = t('empathySimulating', {
+            name: getLocalizedEmpathyName(state.selectedEmpathyPreset, state.currentLanguage),
+        });
     } else if (state.currentMode === MODES.empathy) {
         statusText.textContent = t('empathyActive');
     } else {
@@ -355,11 +365,11 @@ function buildEmpathyPresets() {
 
         const name = document.createElement('div');
         name.className = 'preset-item-name';
-        name.textContent = getLocalizedEmpathyName(key);
+        name.textContent = getLocalizedEmpathyName(key, state.currentLanguage);
 
         const secondary = document.createElement('div');
         secondary.className = 'preset-item-name-en';
-        secondary.textContent = getSecondaryEmpathyName(key);
+        secondary.textContent = getSecondaryEmpathyName(key, state.currentLanguage);
 
         body.appendChild(name);
         body.appendChild(secondary);
@@ -412,7 +422,7 @@ function setSelectedPreset(key) {
     });
 
     if (key) {
-        presetDescText.textContent = getLocalizedEmpathyDescription(key);
+        presetDescText.textContent = getLocalizedEmpathyDescription(key, state.currentLanguage);
         presetDescription.classList.remove('hidden');
     }
 
@@ -423,7 +433,7 @@ function syncEmpathyEditor(key) {
     empathyCustomEditor.classList.toggle('hidden', !key);
     if (!key) return;
 
-    empathyCustomTitle.textContent = getLocalizedEmpathyName(key);
+    empathyCustomTitle.textContent = getLocalizedEmpathyName(key, state.currentLanguage);
     empathyCustomCaption.textContent = key === CUSTOM_EMPATHY_PRESET_KEY ? t('empathyCustomCaption') : t('empathyPresetCaption');
     restoreEmpathyCustomSliders();
 }
@@ -489,7 +499,7 @@ function buildHaQuickPresets() {
         const button = document.createElement('button');
         button.className = 'ha-preset-btn';
         button.dataset.key = key;
-        button.textContent = getHearingAidPresetName(key);
+        button.textContent = getHearingAidPresetName(key, state.currentLanguage);
         button.addEventListener('click', () => onHaPresetSelected(key));
         haQuickPresets.appendChild(button);
     });
