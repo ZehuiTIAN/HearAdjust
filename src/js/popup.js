@@ -134,6 +134,7 @@ let eqGains = new Array(FREQUENCY_BANDS.length).fill(0);
 let empathyCustomGains = new Array(FREQUENCY_BANDS.length).fill(0);
 
 const CUSTOM_EMPATHY_PRESET_KEY = 'custom_audiogram';
+const EMPATHY_LOSS_MIN_DB = -110;
 
 const PRESET_ICONS = {
     mild: '🔉',
@@ -556,7 +557,7 @@ function buildEmpathyCustomEqualizer() {
         const slider = document.createElement('input');
         slider.type = 'range';
         slider.className = 'eq-slider empathy-slider';
-        slider.min = -40;
+        slider.min = EMPATHY_LOSS_MIN_DB;
         slider.max = 0;
         slider.step = 1;
         slider.value = empathyCustomGains[index] ?? 0;
