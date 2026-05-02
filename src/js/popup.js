@@ -4,6 +4,15 @@ import {
     MESSAGE_TYPES,
     MODES,
 } from './shared/constants.js';
+import { UI_STRINGS, createTranslator } from './popup/i18n.js';
+import {
+    getEmpathyPresetMeta,
+    getHearingAidPresetName,
+    getLocalizedEmpathyDescription,
+    getLocalizedEmpathyName,
+    getSecondaryEmpathyName,
+    PRESET_ICONS,
+} from './popup/presetPresentation.js';
 import {
     applyCustomEmpathyGains,
     applyEmpathyPreset,
@@ -12,91 +21,6 @@ import {
     updateFilterBand,
 } from './popup/runtimeClient.js';
 import { loadPopupState, savePopupState } from './popup/storage.js';
-
-function log(...args) {
-    console.log('[HearAdjust popup]', ...args);
-}
-
-function logError(...args) {
-    console.error('[HearAdjust popup]', ...args);
-}
-
-const UI_STRINGS = {
-    zh: {
-        htmlLang: 'zh',
-        subtitle: 'Listen Through Another Threshold',
-        intro: '左侧进入共情体验，中间关闭，右侧切到助听调节。',
-        modeSwitchAria: '模式开关',
-        langSwitchAria: '语言切换',
-        switchEmpathy: '共情',
-        switchOff: '关闭',
-        switchHearingAid: '助听',
-        legendLeft: '左',
-        legendCenter: '中',
-        legendRight: '右',
-        inactiveHint: '未激活 — 将拨杆停在左右任一侧开始',
-        statusQueryFailed: '状态查询失败，请查看扩展日志',
-        switchFailed: '切换失败，请查看扩展日志',
-        startFailed: '启动失败：{error}',
-        empathyActive: '共情体验模式已激活',
-        hearingAidActive: '助听调节模式已激活',
-        empathySimulating: '模拟中：{name}',
-        empathyIntro: '选择一种听力状况，感受他们所感知的声音世界。',
-        offIntro: 'HearAdjust 在关闭状态下不会改变任何声音。你可以先了解两个模式，再把拨杆切到左或右开始体验。',
-        offEmpathyTitle: '共情体验',
-        offEmpathyText: '模拟不同类型的听力损失，让身边的人短暂听见你或他人实际听到的世界。',
-        offHearingTitle: '助听调节',
-        offHearingText: '按频段提升或削减声音，用于根据听力图做个性化补偿，帮助听清语音细节。',
-        empathyCustomTitle: '我的听力图',
-        empathyCustomCaption: '把你的听力损失填进来，让别人听到你听到的世界',
-        empathyPresetCaption: '调整任一频段后，将自动切换为自定义听力图。',
-        hearingIntro: '根据您的听力图调整各频段增益，提升语音清晰度。',
-        footer: '一个关于倾听与关怀的项目',
-        customPresetName: '自定义听力图',
-        customPresetDescription: '根据你自己的听力图填写各频段损失，让身边的人直接听到你日常听到的声音。建议使用负值来模拟不同频段的衰减。',
-        ha_flat: '平坦（重置）',
-        ha_speech: '语音清晰',
-        ha_boost_highs: '高频增强',
-        ha_boost_lows: '低频增强',
-    },
-    en: {
-        htmlLang: 'en',
-        subtitle: 'Listen Through Another Threshold',
-        intro: 'Left for empathy, center for off, right for hearing aid.',
-        modeSwitchAria: 'Mode switch',
-        langSwitchAria: 'Language switch',
-        switchEmpathy: 'Empathy',
-        switchOff: 'Off',
-        switchHearingAid: 'Hearing Aid',
-        legendLeft: 'Left',
-        legendCenter: 'Center',
-        legendRight: 'Right',
-        inactiveHint: 'Inactive — move the switch left or right to begin',
-        statusQueryFailed: 'State lookup failed. Check extension logs.',
-        switchFailed: 'Switch failed. Check extension logs.',
-        startFailed: 'Start failed: {error}',
-        empathyActive: 'Empathy mode active',
-        hearingAidActive: 'Hearing aid mode active',
-        empathySimulating: 'Simulating: {name}',
-        empathyIntro: 'Choose a hearing condition and hear the world through that profile.',
-        offIntro: 'HearAdjust does not alter any sound while it is off. Read the two modes first, then move the switch left or right when you are ready.',
-        offEmpathyTitle: 'Empathy Mode',
-        offEmpathyText: 'Simulate different kinds of hearing loss so people around you can briefly hear the world the way you or someone else actually hears it.',
-        offHearingTitle: 'Hearing Aid Mode',
-        offHearingText: 'Boost or reduce each band to match an audiogram and compensate for loss, making speech details easier to catch.',
-        empathyCustomTitle: 'My Audiogram',
-        empathyCustomCaption: 'Enter your own hearing loss curve so other people can hear what you hear.',
-        empathyPresetCaption: 'Adjust any band to switch this preset into a custom audiogram.',
-        hearingIntro: 'Adjust each band to match your audiogram and improve speech clarity.',
-        footer: 'A small project about listening and care',
-        customPresetName: 'Custom Audiogram',
-        customPresetDescription: 'Enter your own hearing-loss curve by band so people around you can hear your everyday listening reality. Use negative values to model loss at each frequency.',
-        ha_flat: 'Flat Reset',
-        ha_speech: 'Speech Focus',
-        ha_boost_highs: 'Treble Boost',
-        ha_boost_lows: 'Bass Boost',
-    },
-};
 
 const modeSwitch = document.getElementById('modeSwitch');
 const langSwitch = document.getElementById('langSwitch');
@@ -140,18 +64,6 @@ const state = {
     empathyCustomGains: new Array(FREQUENCY_BANDS.length).fill(0),
 };
 const EMPATHY_LOSS_MIN_DB = -110;
-
-const PRESET_ICONS = {
-    mild: '🔉',
-    moderate: '🔈',
-    severe: '🔇',
-    presbycusis: '🧓',
-    nihl: '🎧',
-    tinnitus: '🔔',
-    low_frequency: '🎶',
-    author: '🧑‍💻',
-    [CUSTOM_EMPATHY_PRESET_KEY]: '🫱',
-};
 
 async function init() {
     log('Initializing popup');
@@ -214,48 +126,7 @@ function saveState() {
 }
 
 function t(key, vars = {}) {
-    const template = UI_STRINGS[state.currentLanguage]?.[key] ?? UI_STRINGS.zh[key] ?? key;
-    return template.replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? '');
-}
-
-function getEmpathyPresetMeta(key) {
-    if (key === CUSTOM_EMPATHY_PRESET_KEY) {
-        return {
-            name: UI_STRINGS.zh.customPresetName,
-            nameEn: UI_STRINGS.en.customPresetName,
-            description: UI_STRINGS.zh.customPresetDescription,
-            descriptionEn: UI_STRINGS.en.customPresetDescription,
-        };
-    }
-
-    return EMPATHY_PRESETS[key] ?? null;
-}
-
-function getLocalizedEmpathyName(key) {
-    const preset = getEmpathyPresetMeta(key);
-    if (!preset) return '';
-    return state.currentLanguage === 'en' ? (preset.nameEn || preset.name) : preset.name;
-}
-
-function getSecondaryEmpathyName(key) {
-    const preset = getEmpathyPresetMeta(key);
-    if (!preset) return '';
-    return state.currentLanguage === 'en' ? preset.name : (preset.nameEn || preset.name);
-}
-
-function getLocalizedEmpathyDescription(key) {
-    const preset = getEmpathyPresetMeta(key);
-    if (!preset) return '';
-    if (key === CUSTOM_EMPATHY_PRESET_KEY) {
-        return state.currentLanguage === 'en' ? preset.descriptionEn : preset.description;
-    }
-    return state.currentLanguage === 'en' ? (preset.descriptionEn || preset.description) : preset.description;
-}
-
-function getHearingAidPresetName(key) {
-    const preset = HEARING_AID_PRESETS[key];
-    if (!preset) return key;
-    return state.currentLanguage === 'en' ? (preset.nameEn || preset.name) : preset.name;
+    return createTranslator(state.currentLanguage)(key, vars);
 }
 
 function applyLanguage() {
